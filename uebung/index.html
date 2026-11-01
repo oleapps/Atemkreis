@@ -6,11 +6,22 @@
 <meta name="robots" content="noindex">
 <meta name="referrer" content="no-referrer">
 <title>Atemkreis</title>
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://oleapps.github.io/Atemkreis/uebung/">
+<meta property="og:title" content="Atemkreis">
+<meta property="og:description" content="Geteilte Atemübung · Shared breathing exercise">
+<meta property="og:image" content="https://oleapps.github.io/Atemkreis/uebung/vorschau.png">
+<meta property="og:image:type" content="image/png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="Atemkreis">
 <!--
   Geteilte Übung (Atemkreis, 01.11.2026). Die Übung steht nur im Fragment
   hinter „#“ — ein Browser schickt es nie an diese Seite. Die Seite liest es
   nur hier, lokal, und zeigt den Namen als Text. Kein Skript, keine Schrift
-  und kein Bild von außen, keine Anfrage, kein Zähler.
+  und kein Bild von außen, keine Anfrage, kein Zähler. Die og-Angaben sind
+  die Vorschaukarte im Messenger; sie kennt die Übung nicht (das Fragment
+  erreicht den Messenger-Abruf nie), das Bild liegt neben dieser Seite.
   Quelle im App-Repository: web/Atemkreis/uebung/index.html (bewacht in
   tests/core/teilen.test.ts).
 -->
@@ -52,10 +63,39 @@
     : { titel: 'Someone sent you a breathing exercise:', ohne: 'Someone sent you a breathing exercise', oeffnen: 'Open in Atemkreis', store: 'Get Atemkreis on Google Play', leise: 'Atemkreis: breathing exercises, meditation, PMR and body scan. No account, no ads, offline.' };
   document.documentElement.lang = deutsch ? 'de' : 'en';
 
-  // Das Fragment: „1.<daten>“, Base64url aus UTF-8-JSON. Nur der Name wird gelesen.
+  // Das Fragment: „<fassung>.<daten>“, Base64url. Nur der Name wird gelesen.
+  // Fassung 1: UTF-8-JSON, Name in „n“. Fassung 2: gepackte Bytes — ein Byte
+  // Merkmale, dann Zahlen (je ein bis vier Bytes), zuletzt der Name in UTF-8;
+  // die Zahlen vor dem Namen werden nur übersprungen (core/model/shareLink.ts).
   var fragment = location.hash.replace(/^#/, '');
   var name = '';
   var m = /^(\d{1,4})\.([A-Za-z0-9_-]+)$/.exec(fragment);
+  function text(bytes) { return new TextDecoder('utf-8', { fatal: true }).decode(bytes); }
+  function nameAus(fassung, bytes) {
+    if (fassung === '1') {
+      var daten = JSON.parse(text(bytes));
+      return daten && typeof daten.n === 'string' ? daten.n : '';
+    }
+    if (fassung !== '2' || bytes.length < 1 || bytes[0] >= 128) return '';
+    var f = bytes[0], i = 1;
+    function zahl() {
+      var n = 0, faktor = 1;
+      for (var k = 0; k < 4; k++) {
+        var b = bytes[i++];
+        if (b === undefined) throw new Error('kurz');
+        n += (b & 127) * faktor;
+        if (b < 128) return n;
+        faktor *= 128;
+      }
+      throw new Error('lang');
+    }
+    function ueberspringe(anzahl) { for (var k = 0; k < anzahl; k++) zahl(); }
+    ueberspringe(f & 2 ? 5 : 4);                                  // Muster, Nachatmen
+    if (f & 1) { ueberspringe(2); ueberspringe(zahl() + (f & 64 ? 2 : 0) + 1); } // Runden
+    else ueberspringe(1);                                         // Gesamtdauer
+    if (f & 4) ueberspringe(1);                                   // Ausklang
+    return text(bytes.subarray(i));
+  }
   if (m) {
     try {
       var b64 = m[2].replace(/-/g, '+').replace(/_/g, '/');
@@ -63,8 +103,7 @@
       var binaer = atob(b64);
       var bytes = new Uint8Array(binaer.length);
       for (var i = 0; i < binaer.length; i++) bytes[i] = binaer.charCodeAt(i);
-      var daten = JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(bytes));
-      if (daten && typeof daten.n === 'string') name = daten.n.trim().slice(0, 48);
+      name = nameAus(m[1], bytes).trim().slice(0, 48);
     } catch (e) { name = ''; }
   }
 
