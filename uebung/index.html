@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<meta name="referrer" content="no-referrer">
+<title>Atemkreis</title>
+<!--
+  Geteilte Übung (Atemkreis, 01.11.2026). Die Übung steht nur im Fragment
+  hinter „#“ — ein Browser schickt es nie an diese Seite. Die Seite liest es
+  nur hier, lokal, und zeigt den Namen als Text. Kein Skript, keine Schrift
+  und kein Bild von außen, keine Anfrage, kein Zähler.
+  Quelle im App-Repository: web/Atemkreis/uebung/index.html (bewacht in
+  tests/core/teilen.test.ts).
+-->
+<style>
+  :root { --bg: #F4F1EC; --text: #1E2A33; --muted: #5B6670; --accent: #2C6288; --on-accent: #FFFFFF; }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #121A20; --text: #E8ECEF; --muted: #A5B0B8; --accent: #7FA8C4; --on-accent: #0E161C; }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text);
+         font: 17px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  main { max-width: 480px; margin: 0 auto; padding: 48px 20px; text-align: center; }
+  .kreis { width: 96px; height: 96px; margin: 0 auto 28px; border-radius: 50%;
+           border: 6px solid var(--accent); }
+  h1 { font-size: 22px; font-weight: 600; margin: 0 0 8px; }
+  .name { font-size: 26px; font-weight: 700; margin: 0 0 32px; overflow-wrap: anywhere; }
+  a.knopf { display: block; margin: 0 0 14px; padding: 15px 20px; border-radius: 999px;
+            text-decoration: none; font-weight: 600; }
+  a.haupt { background: var(--accent); color: var(--on-accent); }
+  a.neben { border: 2px solid var(--accent); color: var(--accent); }
+  p.leise { color: var(--muted); font-size: 15px; margin-top: 28px; }
+</style>
+</head>
+<body>
+<main>
+  <div class="kreis" aria-hidden="true"></div>
+  <h1 id="titel">Dir wurde eine Atemübung geschickt</h1>
+  <p class="name" id="name"></p>
+  <a class="knopf haupt" id="oeffnen" href="#">In Atemkreis öffnen</a>
+  <a class="knopf neben" id="store" href="https://play.google.com/store/apps/details?id=de.ole.breathing">Atemkreis im Play Store</a>
+  <p class="leise" id="leise">Atemkreis: Atemübungen, Meditation, PMR und Bodyscan. Ohne Konto, ohne Werbung, offline.</p>
+</main>
+<script>
+(function () {
+  var PLAY = 'https://play.google.com/store/apps/details?id=de.ole.breathing';
+  var deutsch = (navigator.language || '').toLowerCase().indexOf('de') === 0;
+  var T = deutsch
+    ? { titel: 'Dir wurde eine Atemübung geschickt:', ohne: 'Dir wurde eine Atemübung geschickt', oeffnen: 'In Atemkreis öffnen', store: 'Atemkreis im Play Store', leise: 'Atemkreis: Atemübungen, Meditation, PMR und Bodyscan. Ohne Konto, ohne Werbung, offline.' }
+    : { titel: 'Someone sent you a breathing exercise:', ohne: 'Someone sent you a breathing exercise', oeffnen: 'Open in Atemkreis', store: 'Get Atemkreis on Google Play', leise: 'Atemkreis: breathing exercises, meditation, PMR and body scan. No account, no ads, offline.' };
+  document.documentElement.lang = deutsch ? 'de' : 'en';
+
+  // Das Fragment: „1.<daten>“, Base64url aus UTF-8-JSON. Nur der Name wird gelesen.
+  var fragment = location.hash.replace(/^#/, '');
+  var name = '';
+  var m = /^(\d{1,4})\.([A-Za-z0-9_-]+)$/.exec(fragment);
+  if (m) {
+    try {
+      var b64 = m[2].replace(/-/g, '+').replace(/_/g, '/');
+      while (b64.length % 4) b64 += '=';
+      var binaer = atob(b64);
+      var bytes = new Uint8Array(binaer.length);
+      for (var i = 0; i < binaer.length; i++) bytes[i] = binaer.charCodeAt(i);
+      var daten = JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(bytes));
+      if (daten && typeof daten.n === 'string') name = daten.n.trim().slice(0, 48);
+    } catch (e) { name = ''; }
+  }
+
+  document.getElementById('titel').textContent = name ? T.titel : T.ohne;
+  document.getElementById('name').textContent = name;
+  document.getElementById('store').textContent = T.store;
+  document.getElementById('leise').textContent = T.leise;
+
+  // Rückfall, wenn der App Link nicht greift: Android öffnet Atemkreis über
+  // das Schema der App, sonst den Play Store. Gebaut hier, lokal.
+  var oeffnen = document.getElementById('oeffnen');
+  oeffnen.textContent = T.oeffnen;
+  if (m && /android/i.test(navigator.userAgent)) {
+    oeffnen.href = 'intent://teilen/' + m[1] + '.' + m[2] +
+      '#Intent;scheme=atemraum;S.browser_fallback_url=' + encodeURIComponent(PLAY) + ';end';
+  } else {
+    oeffnen.style.display = 'none';
+  }
+})();
+</script>
+</body>
+</html>
