@@ -43,6 +43,7 @@
   a.haupt { background: var(--accent); color: var(--on-accent); }
   a.neben { border: 2px solid var(--accent); color: var(--accent); }
   p.leise { color: var(--muted); font-size: 15px; margin-top: 28px; }
+  p.hinweis { color: var(--muted); font-size: 14px; margin: -4px 0 18px; }
 </style>
 </head>
 <body>
@@ -51,6 +52,7 @@
   <h1 id="titel">Dir wurde eine Atemübung geschickt</h1>
   <p class="name" id="name"></p>
   <a class="knopf haupt" id="oeffnen" href="#">In Atemkreis öffnen</a>
+  <p class="hinweis" id="hinweis" hidden></p>
   <a class="knopf neben" id="store" href="https://play.google.com/store/apps/details?id=de.ole.breathing">Atemkreis im Play Store</a>
   <p class="leise" id="leise">Atemkreis: Atemübungen, Meditation, PMR und Bodyscan. Ohne Konto, ohne Werbung, offline.</p>
 </main>
@@ -59,8 +61,8 @@
   var PLAY = 'https://play.google.com/store/apps/details?id=de.ole.breathing';
   var deutsch = (navigator.language || '').toLowerCase().indexOf('de') === 0;
   var T = deutsch
-    ? { titel: 'Dir wurde eine Atemübung geschickt:', empfohlen: 'Dir wurde eine Übung empfohlen:', ohne: 'Dir wurde eine Atemübung geschickt', oeffnen: 'In Atemkreis öffnen', store: 'Atemkreis im Play Store', leise: 'Atemkreis: Atemübungen, Meditation, PMR und Bodyscan. Ohne Konto, ohne Werbung, offline.' }
-    : { titel: 'Someone sent you a breathing exercise:', empfohlen: 'Someone recommended an exercise:', ohne: 'Someone sent you a breathing exercise', oeffnen: 'Open in Atemkreis', store: 'Get Atemkreis on Google Play', leise: 'Atemkreis: breathing exercises, meditation, PMR and body scan. No account, no ads, offline.' };
+    ? { titel: 'Dir wurde eine Atemübung geschickt:', empfohlen: 'Dir wurde eine Übung empfohlen:', ohne: 'Dir wurde eine Atemübung geschickt', oeffnen: 'In Atemkreis öffnen', store: 'Atemkreis im Play Store', hinweis: 'Öffnet sich Atemkreis mit einer Fehlermeldung? Dann aktualisiere die App im Play Store.', leise: 'Atemkreis: Atemübungen, Meditation, PMR und Bodyscan. Ohne Konto, ohne Werbung, offline.' }
+    : { titel: 'Someone sent you a breathing exercise:', empfohlen: 'Someone recommended an exercise:', ohne: 'Someone sent you a breathing exercise', oeffnen: 'Open in Atemkreis', store: 'Get Atemkreis on Google Play', hinweis: 'Does Atemkreis open with an error? Update the app in the Play Store.', leise: 'Atemkreis: breathing exercises, meditation, PMR and body scan. No account, no ads, offline.' };
   document.documentElement.lang = deutsch ? 'de' : 'en';
 
   // Das Fragment: „<fassung>.<daten>“, Base64url. Nur der Name wird gelesen.
@@ -131,6 +133,11 @@
   if (m && /android/i.test(navigator.userAgent)) {
     oeffnen.href = 'intent://teilen/' + m[1] + '.' + m[2] +
       '#Intent;scheme=atemraum;S.browser_fallback_url=' + encodeURIComponent(PLAY) + ';end';
+    // Fassungen vor dem Teilen kennen `atemraum://teilen/…` nicht und zeigen
+    // eine Fehlerseite (02.11.2026) — der leise Hinweis nur hier, auf Android.
+    var hinweis = document.getElementById('hinweis');
+    hinweis.textContent = T.hinweis;
+    hinweis.hidden = false;
   } else {
     oeffnen.style.display = 'none';
   }
