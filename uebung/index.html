@@ -59,14 +59,16 @@
   var PLAY = 'https://play.google.com/store/apps/details?id=de.ole.breathing';
   var deutsch = (navigator.language || '').toLowerCase().indexOf('de') === 0;
   var T = deutsch
-    ? { titel: 'Dir wurde eine Atemübung geschickt:', ohne: 'Dir wurde eine Atemübung geschickt', oeffnen: 'In Atemkreis öffnen', store: 'Atemkreis im Play Store', leise: 'Atemkreis: Atemübungen, Meditation, PMR und Bodyscan. Ohne Konto, ohne Werbung, offline.' }
-    : { titel: 'Someone sent you a breathing exercise:', ohne: 'Someone sent you a breathing exercise', oeffnen: 'Open in Atemkreis', store: 'Get Atemkreis on Google Play', leise: 'Atemkreis: breathing exercises, meditation, PMR and body scan. No account, no ads, offline.' };
+    ? { titel: 'Dir wurde eine Atemübung geschickt:', empfohlen: 'Dir wurde eine Übung empfohlen:', ohne: 'Dir wurde eine Atemübung geschickt', oeffnen: 'In Atemkreis öffnen', store: 'Atemkreis im Play Store', leise: 'Atemkreis: Atemübungen, Meditation, PMR und Bodyscan. Ohne Konto, ohne Werbung, offline.' }
+    : { titel: 'Someone sent you a breathing exercise:', empfohlen: 'Someone recommended an exercise:', ohne: 'Someone sent you a breathing exercise', oeffnen: 'Open in Atemkreis', store: 'Get Atemkreis on Google Play', leise: 'Atemkreis: breathing exercises, meditation, PMR and body scan. No account, no ads, offline.' };
   document.documentElement.lang = deutsch ? 'de' : 'en';
 
   // Das Fragment: „<fassung>.<daten>“, Base64url. Nur der Name wird gelesen.
-  // Fassung 1: UTF-8-JSON, Name in „n“. Fassung 2: gepackte Bytes — ein Byte
-  // Merkmale, dann Zahlen (je ein bis vier Bytes), zuletzt der Name in UTF-8;
-  // die Zahlen vor dem Namen werden nur übersprungen (core/model/shareLink.ts).
+  // Fassung 1: UTF-8-JSON, Name in „n“. Fassung 2 (eigene Übung) und 3
+  // (Vorlage): gepackte Bytes — ein Byte Merkmale, dann Zahlen (je ein bis
+  // vier Bytes), mit Merkmal 128 ein Erweiterungsblock (Länge, dann Bytes),
+  // zuletzt der Name in UTF-8; alles vor dem Namen wird nur übersprungen
+  // (core/model/shareLink.ts).
   var fragment = location.hash.replace(/^#/, '');
   var name = '';
   var m = /^(\d{1,4})\.([A-Za-z0-9_-]+)$/.exec(fragment);
@@ -76,7 +78,7 @@
       var daten = JSON.parse(text(bytes));
       return daten && typeof daten.n === 'string' ? daten.n : '';
     }
-    if (fassung !== '2' || bytes.length < 1 || bytes[0] >= 128) return '';
+    if ((fassung !== '2' && fassung !== '3') || bytes.length < 1) return '';
     var f = bytes[0], i = 1;
     function zahl() {
       var n = 0, faktor = 1;
@@ -90,10 +92,20 @@
       throw new Error('lang');
     }
     function ueberspringe(anzahl) { for (var k = 0; k < anzahl; k++) zahl(); }
-    ueberspringe(f & 2 ? 5 : 4);                                  // Muster, Nachatmen
-    if (f & 1) { ueberspringe(2); ueberspringe(zahl() + (f & 64 ? 2 : 0) + 1); } // Runden
-    else ueberspringe(1);                                         // Gesamtdauer
-    if (f & 4) ueberspringe(1);                                   // Ausklang
+    if (fassung === '3') {
+      if (f & 127) return '';
+      ueberspringe(1);                                            // Vorlage
+    } else {
+      ueberspringe(f & 2 ? 5 : 4);                                // Muster, Nachatmen
+      if (f & 1) { ueberspringe(2); ueberspringe(zahl() + (f & 64 ? 2 : 0) + 1); } // Runden
+      else ueberspringe(1);                                       // Gesamtdauer
+      if (f & 4) ueberspringe(1);                                 // Ausklang
+    }
+    if (f & 128) {                                                // Erweiterung
+      var laenge = zahl();
+      i += laenge;
+      if (i > bytes.length) throw new Error('kurz');
+    }
     return text(bytes.subarray(i));
   }
   if (m) {
@@ -107,7 +119,7 @@
     } catch (e) { name = ''; }
   }
 
-  document.getElementById('titel').textContent = name ? T.titel : T.ohne;
+  document.getElementById('titel').textContent = name ? (m[1] === '3' ? T.empfohlen : T.titel) : T.ohne;
   document.getElementById('name').textContent = name;
   document.getElementById('store').textContent = T.store;
   document.getElementById('leise').textContent = T.leise;
